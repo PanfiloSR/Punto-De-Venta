@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "628263079151",
+    "project_id": "examen-p2-27018",
+    "storage_bucket": "examen-p2-27018.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:628263079151:android:c408900b2c474623f3df1a",
+        "android_client_info": {
+          "package_name": "com.enrique.examen.inventario_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvnHLAScmhEOBJDmpKFbZHtxPrUfiWneE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
