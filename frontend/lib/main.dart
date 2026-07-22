@@ -19,9 +19,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-        home:  LoginScreen(),
-    );
+    return const MaterialApp(home: LoginScreen());
   }
 }
 
@@ -41,9 +39,11 @@ class _TestScreenState extends State<TestScreen> {
     final data = await _apiService.verificarTest();
     setState(() {
       if (data != null) {
-        _backendMessage = "Respuesta de Node.js\n\nStatus: ${data['status']}\nMessage: ${data['message']}\nAuthor: ${data['author']}";
+        _backendMessage =
+            "Respuesta de Node.js\n\nStatus: ${data['status']}\nMessage: ${data['message']}\nAuthor: ${data['author']}";
       } else {
-        _backendMessage = "Error: No se pudo conectar al Backend. ¿Está encendido Node.js?";
+        _backendMessage =
+            "Error: No se pudo conectar al Backend. ¿Está encendido Node.js?";
       }
     });
   }
@@ -58,7 +58,11 @@ class _TestScreenState extends State<TestScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_backendMessage, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+              Text(
+                _backendMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 30),
               ElevatedButton(
                 onPressed: _probarConexion,

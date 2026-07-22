@@ -7,7 +7,7 @@ class ApiService {
     if (kIsWeb) {
       return 'http://localhost:3000'; // Chrome
     } else {
-      return 'http://10.0.107.181:3000'; // Para teléfono
+      return 'http://10.0.100.192:3000'; // Para teléfono
     }
   }
 
@@ -31,7 +31,10 @@ class ApiService {
   // 1. CONSULTA (Read)
   Future<List<dynamic>> obtenerProductos() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/productos'), headers: _getHeaders());
+      final response = await http.get(
+        Uri.parse('$_baseUrl/productos'),
+        headers: _getHeaders(),
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
@@ -57,7 +60,10 @@ class ApiService {
   }
 
   // 3. MODIFICACIÓN (Update)
-  Future<bool> actualizarProducto(String id, Map<String, dynamic> datosProducto) async {
+  Future<bool> actualizarProducto(
+    String id,
+    Map<String, dynamic> datosProducto,
+  ) async {
     try {
       final response = await http.put(
         Uri.parse('$_baseUrl/productos/$id'),
@@ -77,7 +83,9 @@ class ApiService {
       final response = await http.patch(
         Uri.parse('$_baseUrl/productos/$id/vender'),
         headers: _getHeaders(),
-        body: jsonEncode({"cantidad": cantidad}), // Mandamos la cantidad elegida al backend
+        body: jsonEncode({
+          "cantidad": cantidad,
+        }), // Mandamos la cantidad elegida al backend
       );
       return response.statusCode == 200;
     } catch (e) {
@@ -103,7 +111,10 @@ class ApiService {
   // Tu test original por si lo ocupas
   Future<Map<String, dynamic>?> verificarTest() async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/'), headers: _getHeaders());
+      final response = await http.get(
+        Uri.parse('$_baseUrl/'),
+        headers: _getHeaders(),
+      );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
