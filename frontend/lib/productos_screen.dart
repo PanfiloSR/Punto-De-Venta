@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'services/api_service.dart';
 
+const Color _headingColor = Color(0xFF002254);
+const Color _buttonColor = Color(0xFF00C0FF);
+const Color _containerColor = Color(0xFFE9F1FA);
+const Color _iconColor = Color(0xFFA5A5A5);
+
 class ProductosScreen extends StatefulWidget {
   const ProductosScreen({super.key});
 
@@ -12,11 +17,6 @@ class ProductosScreen extends StatefulWidget {
 }
 
 class _ProductosScreenState extends State<ProductosScreen> {
-  static const Color headingColor = Color(0xFF002254);
-  static const Color buttonColor = Color(0xFF00C0FF);
-  static const Color containerColor = Color(0xFFE9F1FA);
-  static const Color iconColor = Color(0xFFA5A5A5);
-
   List<Map<String, dynamic>> _productos = [];
 
   bool _isLoading = true;
@@ -25,18 +25,22 @@ class _ProductosScreenState extends State<ProductosScreen> {
   @override
   void initState() {
     super.initState();
-
     _cargarProductos();
   }
 
   Future<void> _cargarProductos() async {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final productos = await ApiService.getProducts();
+      final List<Map<String, dynamic>> productos =
+      await ApiService.getProducts();
 
       if (!mounted) {
         return;
@@ -51,9 +55,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       }
 
       setState(() {
-        _errorMessage = error
-            .toString()
-            .replaceFirst('Exception: ', '');
+        _errorMessage = _limpiarError(error);
       });
     } finally {
       if (mounted) {
@@ -67,377 +69,30 @@ class _ProductosScreenState extends State<ProductosScreen> {
   Future<void> _mostrarFormulario({
     Map<String, dynamic>? producto,
   }) async {
-    final bool esEditar = producto != null;
-
-    final GlobalKey<FormState> formKey =
-    GlobalKey<FormState>();
-
-    final TextEditingController nameController =
-    TextEditingController(
-      text: producto?['name']?.toString() ?? '',
-    );
-
-    final TextEditingController brandController =
-    TextEditingController(
-      text: producto?['brand']?.toString() ?? '',
-    );
-
-    final TextEditingController descriptionController =
-    TextEditingController(
-      text: producto?['description']?.toString() ?? '',
-    );
-
-    final TextEditingController salePriceController =
-    TextEditingController(
-      text: producto?['sale_price']?.toString() ?? '',
-    );
-
-    final TextEditingController purchasePriceController =
-    TextEditingController(
-      text: producto?['purchase_price']?.toString() ?? '',
-    );
-
-    final TextEditingController stockController =
-    TextEditingController(
-      text: producto?['stock']?.toString() ?? '',
-    );
-
-    final TextEditingController imageUrlController =
-    TextEditingController(
-      text: producto?['image_url']?.toString() ?? '',
-    );
-
     final bool? guardado = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        bool guardando = false;
-
-        return StatefulBuilder(
-          builder: (
-              BuildContext context,
-              void Function(void Function()) setDialogState,
-              ) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              title: Text(
-                esEditar
-                    ? 'Editar producto'
-                    : 'Agregar producto',
-                style: const TextStyle(
-                  color: headingColor,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              content: SizedBox(
-                width: 430,
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildField(
-                          controller: nameController,
-                          label: 'Nombre',
-                          icon: Icons.inventory_2_outlined,
-                          validator: (String? value) {
-                            if (value == null ||
-                                value.trim().isEmpty) {
-                              return 'Ingresa el nombre.';
-                            }
-
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          controller: brandController,
-                          label: 'Marca',
-                          icon: Icons.sell_outlined,
-                          validator: (String? value) {
-                            if (value == null ||
-                                value.trim().isEmpty) {
-                              return 'Ingresa la marca.';
-                            }
-
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          controller:
-                          descriptionController,
-                          label: 'Descripción',
-                          icon: Icons.description_outlined,
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          controller: purchasePriceController,
-                          label: 'Precio de compra',
-                          icon: Icons.shopping_cart_outlined,
-                          keyboardType:
-                          const TextInputType
-                              .numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: _validatePrice,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          controller: salePriceController,
-                          label: 'Precio de venta',
-                          icon:
-                          Icons.attach_money_rounded,
-                          keyboardType:
-                          const TextInputType
-                              .numberWithOptions(
-                            decimal: true,
-                          ),
-                          validator: _validatePrice,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          controller: stockController,
-                          label: 'Existencias',
-                          icon: Icons.numbers_outlined,
-                          keyboardType:
-                          TextInputType.number,
-                          validator: (String? value) {
-                            final int? stock =
-                            int.tryParse(
-                              value?.trim() ?? '',
-                            );
-
-                            if (stock == null || stock < 0) {
-                              return 'Ingresa una cantidad válida.';
-                            }
-
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _buildField(
-                          controller: imageUrlController,
-                          label: 'URL de imagen',
-                          icon: Icons.image_outlined,
-                          keyboardType:
-                          TextInputType.url,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: guardando
-                      ? null
-                      : () {
-                    Navigator.pop(
-                      dialogContext,
-                      false,
-                    );
-                  },
-                  child: const Text(
-                    'Cancelar',
-                    style: TextStyle(
-                      color: headingColor,
-                    ),
-                  ),
-                ),
-                FilledButton(
-                  onPressed: guardando
-                      ? null
-                      : () async {
-                    if (!formKey.currentState!
-                        .validate()) {
-                      return;
-                    }
-
-                    setDialogState(() {
-                      guardando = true;
-                    });
-
-                    final Map<String, dynamic>
-                    datosProducto = {
-                      'name':
-                      nameController.text.trim(),
-                      'brand':
-                      brandController.text.trim(),
-                      'description':
-                      descriptionController.text
-                          .trim(),
-                      'sale_price':
-                      double.parse(
-                        salePriceController.text
-                            .trim(),
-                      ),
-                      'purchase_price':
-                      double.parse(
-                        purchasePriceController.text
-                            .trim(),
-                      ),
-                      'stock': int.parse(
-                        stockController.text.trim(),
-                      ),
-                      'image_url':
-                      imageUrlController.text
-                          .trim(),
-                      'category_id':
-                      producto?['category_id'] ??
-                          1,
-                    };
-
-                    final dynamic providerId =
-                    producto?['provider_id'];
-
-                    if (providerId != null &&
-                        providerId
-                            .toString()
-                            .isNotEmpty) {
-                      datosProducto['provider_id'] =
-                      providerId is Map
-                          ? providerId['_id']
-                          : providerId;
-                    }
-
-                    try {
-                      if (esEditar) {
-                        await ApiService.updateProduct(
-                          producto['_id'].toString(),
-                          datosProducto,
-                        );
-                      } else {
-                        await ApiService.createProduct(
-                          datosProducto,
-                        );
-                      }
-
-                      if (dialogContext.mounted) {
-                        Navigator.pop(
-                          dialogContext,
-                          true,
-                        );
-                      }
-                    } catch (error) {
-                      setDialogState(() {
-                        guardando = false;
-                      });
-
-                      if (dialogContext.mounted) {
-                        ScaffoldMessenger.of(
-                          dialogContext,
-                        ).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              error
-                                  .toString()
-                                  .replaceFirst(
-                                'Exception: ',
-                                '',
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: buttonColor,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: guardando
-                      ? const SizedBox(
-                    width: 21,
-                    height: 21,
-                    child:
-                    CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                      : const Text('Guardar'),
-                ),
-              ],
-            );
-          },
+      builder: (BuildContext context) {
+        return ProductFormDialog(
+          producto: producto,
         );
       },
     );
 
-    nameController.dispose();
-    brandController.dispose();
-    descriptionController.dispose();
-    salePriceController.dispose();
-    purchasePriceController.dispose();
-    stockController.dispose();
-    imageUrlController.dispose();
-
-    if (guardado == true) {
-      await _cargarProductos();
-
-      if (mounted) {
-        _mostrarMensaje(
-          esEditar
-              ? 'Producto actualizado correctamente.'
-              : 'Producto creado correctamente.',
-        );
-      }
-    }
-  }
-
-  String? _validatePrice(String? value) {
-    final double? price = double.tryParse(
-      value?.trim() ?? '',
-    );
-
-    if (price == null || price < 0) {
-      return 'Ingresa un precio válido.';
+    if (!mounted || guardado != true) {
+      return;
     }
 
-    return null;
-  }
+    await _cargarProductos();
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      validator: validator,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      cursorColor: buttonColor,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(
-          icon,
-          color: iconColor,
-        ),
-        filled: true,
-        fillColor: containerColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: buttonColor,
-            width: 1.7,
-          ),
-        ),
-      ),
+    if (!mounted) {
+      return;
+    }
+
+    _mostrarMensaje(
+      producto == null
+          ? 'Producto creado correctamente.'
+          : 'Producto actualizado correctamente.',
     );
   }
 
@@ -449,33 +104,36 @@ class _ProductosScreenState extends State<ProductosScreen> {
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: const Text(
             'Eliminar producto',
             style: TextStyle(
-              color: headingColor,
+              color: _headingColor,
               fontWeight: FontWeight.w900,
             ),
           ),
           content: Text(
             '¿Deseas eliminar el producto '
-                '"${producto['name']}"?',
+                '"${producto['name'] ?? ''}"?',
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
+                Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Cancelar'),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: _headingColor,
+                ),
+              ),
             ),
             FilledButton(
               onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
+                Navigator.of(dialogContext).pop(true);
               },
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.redAccent,
@@ -488,7 +146,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       },
     );
 
-    if (confirmar != true) {
+    if (!mounted || confirmar != true) {
       return;
     }
 
@@ -497,36 +155,55 @@ class _ProductosScreenState extends State<ProductosScreen> {
         producto['_id'].toString(),
       );
 
+      if (!mounted) {
+        return;
+      }
+
       await _cargarProductos();
 
-      if (mounted) {
-        _mostrarMensaje(
-          'Producto eliminado correctamente.',
-        );
+      if (!mounted) {
+        return;
       }
+
+      _mostrarMensaje(
+        'Producto eliminado correctamente.',
+      );
     } catch (error) {
-      if (mounted) {
-        _mostrarMensaje(
-          error
-              .toString()
-              .replaceFirst('Exception: ', ''),
-          error: true,
-        );
+      if (!mounted) {
+        return;
       }
+
+      _mostrarMensaje(
+        _limpiarError(error),
+        error: true,
+      );
     }
   }
 
+  String _limpiarError(Object error) {
+    return error
+        .toString()
+        .replaceFirst('Exception: ', '');
+  }
+
   void _mostrarMensaje(
-      String message, {
+      String mensaje, {
         bool error = false,
       }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor:
-        error ? Colors.redAccent : headingColor,
-        content: Text(message),
-      ),
-    );
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: error
+              ? Colors.redAccent
+              : _headingColor,
+          content: Text(mensaje),
+        ),
+      );
   }
 
   @override
@@ -534,20 +211,26 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: _headingColor,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
         title: const Text(
           'Inventario',
           style: TextStyle(
-            color: headingColor,
+            color: _headingColor,
             fontWeight: FontWeight.w900,
           ),
         ),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
-            onPressed: _cargarProductos,
+            onPressed: _isLoading
+                ? null
+                : _cargarProductos,
             icon: const Icon(
               Icons.refresh_rounded,
-              color: headingColor,
+              color: _headingColor,
             ),
           ),
         ],
@@ -557,7 +240,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
         onPressed: () {
           _mostrarFormulario();
         },
-        backgroundColor: buttonColor,
+        backgroundColor: _buttonColor,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
         label: const Text(
@@ -575,7 +258,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
-          color: buttonColor,
+          color: _buttonColor,
         ),
       );
     }
@@ -589,7 +272,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             children: [
               const Icon(
                 Icons.cloud_off_outlined,
-                color: iconColor,
+                color: _iconColor,
                 size: 58,
               ),
               const SizedBox(height: 15),
@@ -597,18 +280,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 _errorMessage!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: headingColor,
+                  color: _headingColor,
                 ),
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
                 onPressed: _cargarProductos,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _buttonColor,
+                  foregroundColor: Colors.white,
+                ),
                 icon: const Icon(
                   Icons.refresh_rounded,
                 ),
-                label: const Text(
-                  'Reintentar',
-                ),
+                label: const Text('Reintentar'),
               ),
             ],
           ),
@@ -617,36 +302,40 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
 
     if (_productos.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                color: iconColor,
-                size: 64,
+      return RefreshIndicator(
+        color: _buttonColor,
+        onRefresh: _cargarProductos,
+        child: ListView(
+          physics:
+          const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 180),
+            Icon(
+              Icons.inventory_2_outlined,
+              color: _iconColor,
+              size: 64,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No hay productos registrados.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _headingColor,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
-              SizedBox(height: 16),
-              Text(
-                'No hay productos registrados.',
-                style: TextStyle(
-                  color: headingColor,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
 
     return RefreshIndicator(
-      color: buttonColor,
+      color: _buttonColor,
       onRefresh: _cargarProductos,
       child: ListView.separated(
+        physics:
+        const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
           20,
           12,
@@ -654,17 +343,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
           100,
         ),
         itemCount: _productos.length,
-        separatorBuilder: (_, _) {
+        separatorBuilder: (
+            BuildContext context,
+            int index,
+            ) {
           return const SizedBox(height: 12);
         },
         itemBuilder: (
             BuildContext context,
             int index,
             ) {
-          final Map<String, dynamic> producto =
-          _productos[index];
-
-          return _buildProductCard(producto);
+          return _buildProductCard(
+            _productos[index],
+          );
         },
       ),
     );
@@ -677,7 +368,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
         producto['image_url']?.toString() ?? '';
 
     final double salePrice = double.tryParse(
-      producto['sale_price']?.toString() ?? '',
+      producto['sale_price']
+          ?.toString() ??
+          '',
     ) ??
         0;
 
@@ -689,7 +382,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: containerColor,
+        color: _containerColor,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -713,13 +406,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   ) {
                 return const Icon(
                   Icons.inventory_2_outlined,
-                  color: buttonColor,
+                  color: _buttonColor,
                 );
               },
             )
                 : const Icon(
               Icons.inventory_2_outlined,
-              color: buttonColor,
+              color: _buttonColor,
             ),
           ),
           const SizedBox(width: 15),
@@ -730,8 +423,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
               children: [
                 Text(
                   producto['name']?.toString() ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: headingColor,
+                    color: _headingColor,
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
@@ -739,22 +434,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 const SizedBox(height: 3),
                 Text(
                   producto['brand']?.toString() ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFF718197),
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 7),
-                Row(
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 5,
                   children: [
                     Text(
                       '\$${salePrice.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        color: headingColor,
+                        color: _headingColor,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(width: 14),
                     Text(
                       'Stock: $stock',
                       style: TextStyle(
@@ -773,18 +471,23 @@ class _ProductosScreenState extends State<ProductosScreen> {
           ),
           PopupMenuButton<String>(
             color: Colors.white,
+            tooltip: 'Opciones',
             onSelected: (String value) {
-              if (value == 'edit') {
-                _mostrarFormulario(
-                  producto: producto,
-                );
-              }
+              switch (value) {
+                case 'edit':
+                  _mostrarFormulario(
+                    producto: producto,
+                  );
+                  break;
 
-              if (value == 'delete') {
-                _eliminarProducto(producto);
+                case 'delete':
+                  _eliminarProducto(producto);
+                  break;
               }
             },
-            itemBuilder: (BuildContext context) {
+            itemBuilder: (
+                BuildContext context,
+                ) {
               return const [
                 PopupMenuItem<String>(
                   value: 'edit',
@@ -792,7 +495,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     children: [
                       Icon(
                         Icons.edit_outlined,
-                        color: headingColor,
+                        color: _headingColor,
                       ),
                       SizedBox(width: 10),
                       Text('Editar'),
@@ -816,6 +519,494 @@ class _ProductosScreenState extends State<ProductosScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ProductFormDialog extends StatefulWidget {
+  const ProductFormDialog({
+    super.key,
+    this.producto,
+  });
+
+  final Map<String, dynamic>? producto;
+
+  @override
+  State<ProductFormDialog> createState() {
+    return _ProductFormDialogState();
+  }
+}
+
+class _ProductFormDialogState
+    extends State<ProductFormDialog> {
+  final GlobalKey<FormState> _formKey =
+  GlobalKey<FormState>();
+
+  late final TextEditingController
+  _nameController;
+
+  late final TextEditingController
+  _brandController;
+
+  late final TextEditingController
+  _descriptionController;
+
+  late final TextEditingController
+  _salePriceController;
+
+  late final TextEditingController
+  _purchasePriceController;
+
+  late final TextEditingController
+  _stockController;
+
+  late final TextEditingController
+  _imageUrlController;
+
+  bool _guardando = false;
+  String? _errorMessage;
+
+  bool get _esEditar {
+    return widget.producto != null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    final Map<String, dynamic>? producto =
+        widget.producto;
+
+    _nameController = TextEditingController(
+      text: producto?['name']?.toString() ?? '',
+    );
+
+    _brandController = TextEditingController(
+      text: producto?['brand']?.toString() ?? '',
+    );
+
+    _descriptionController =
+        TextEditingController(
+          text:
+          producto?['description']?.toString() ??
+              '',
+        );
+
+    _salePriceController =
+        TextEditingController(
+          text:
+          producto?['sale_price']?.toString() ??
+              '',
+        );
+
+    _purchasePriceController =
+        TextEditingController(
+          text: producto?['purchase_price']
+              ?.toString() ??
+              '',
+        );
+
+    _stockController = TextEditingController(
+      text: producto?['stock']?.toString() ?? '',
+    );
+
+    _imageUrlController =
+        TextEditingController(
+          text:
+          producto?['image_url']?.toString() ??
+              '',
+        );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _brandController.dispose();
+    _descriptionController.dispose();
+    _salePriceController.dispose();
+    _purchasePriceController.dispose();
+    _stockController.dispose();
+    _imageUrlController.dispose();
+
+    super.dispose();
+  }
+
+  Future<void> _guardar() async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _guardando = true;
+      _errorMessage = null;
+    });
+
+    final Map<String, dynamic> datosProducto = {
+      'name': _nameController.text.trim(),
+      'brand': _brandController.text.trim(),
+      'description':
+      _descriptionController.text.trim(),
+      'sale_price': _parseDecimal(
+        _salePriceController.text,
+      ),
+      'purchase_price': _parseDecimal(
+        _purchasePriceController.text,
+      ),
+      'stock': int.parse(
+        _stockController.text.trim(),
+      ),
+      'image_url':
+      _imageUrlController.text.trim(),
+      'category_id':
+      widget.producto?['category_id'] ?? 1,
+    };
+
+    final String? providerId =
+    _obtenerProviderId(
+      widget.producto?['provider_id'],
+    );
+
+    if (providerId != null) {
+      datosProducto['provider_id'] = providerId;
+    }
+
+    try {
+      if (_esEditar) {
+        await ApiService.updateProduct(
+          widget.producto!['_id'].toString(),
+          datosProducto,
+        );
+      } else {
+        await ApiService.createProduct(
+          datosProducto,
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _guardando = false;
+        _errorMessage = error
+            .toString()
+            .replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  double _parseDecimal(String value) {
+    return double.parse(
+      value.trim().replaceAll(',', '.'),
+    );
+  }
+
+  String? _obtenerProviderId(
+      dynamic providerValue,
+      ) {
+    dynamic value = providerValue;
+
+    if (value is Map) {
+      value = value['_id'];
+    }
+
+    final String text =
+        value?.toString().trim() ?? '';
+
+    final bool isObjectId =
+    RegExp(r'^[a-fA-F0-9]{24}$')
+        .hasMatch(text);
+
+    return isObjectId ? text : null;
+  }
+
+  String? _validarTextoObligatorio(
+      String? value,
+      String mensaje,
+      ) {
+    if (value == null || value.trim().isEmpty) {
+      return mensaje;
+    }
+
+    return null;
+  }
+
+  String? _validarPrecio(String? value) {
+    final String normalized =
+        value?.trim().replaceAll(',', '.') ?? '';
+
+    final double? price =
+    double.tryParse(normalized);
+
+    if (price == null || price < 0) {
+      return 'Ingresa un precio válido.';
+    }
+
+    return null;
+  }
+
+  String? _validarStock(String? value) {
+    final int? stock = int.tryParse(
+      value?.trim() ?? '',
+    );
+
+    if (stock == null || stock < 0) {
+      return 'Ingresa una cantidad válida.';
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_guardando,
+      child: AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 24,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        title: Text(
+          _esEditar
+              ? 'Editar producto'
+              : 'Agregar producto',
+          style: const TextStyle(
+            color: _headingColor,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        content: SizedBox(
+          width: 430,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              autovalidateMode:
+              AutovalidateMode.onUserInteraction,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildField(
+                    controller: _nameController,
+                    label: 'Nombre',
+                    icon:
+                    Icons.inventory_2_outlined,
+                    textCapitalization:
+                    TextCapitalization.sentences,
+                    validator: (String? value) {
+                      return _validarTextoObligatorio(
+                        value,
+                        'Ingresa el nombre.',
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _buildField(
+                    controller: _brandController,
+                    label: 'Marca',
+                    icon: Icons.sell_outlined,
+                    textCapitalization:
+                    TextCapitalization.words,
+                    validator: (String? value) {
+                      return _validarTextoObligatorio(
+                        value,
+                        'Ingresa la marca.',
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _buildField(
+                    controller:
+                    _descriptionController,
+                    label: 'Descripción',
+                    icon:
+                    Icons.description_outlined,
+                    textCapitalization:
+                    TextCapitalization.sentences,
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildField(
+                    controller:
+                    _purchasePriceController,
+                    label: 'Precio de compra',
+                    icon:
+                    Icons.shopping_cart_outlined,
+                    keyboardType:
+                    const TextInputType
+                        .numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: _validarPrecio,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildField(
+                    controller:
+                    _salePriceController,
+                    label: 'Precio de venta',
+                    icon:
+                    Icons.attach_money_rounded,
+                    keyboardType:
+                    const TextInputType
+                        .numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: _validarPrecio,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildField(
+                    controller: _stockController,
+                    label: 'Existencias',
+                    icon: Icons.numbers_outlined,
+                    keyboardType:
+                    TextInputType.number,
+                    validator: _validarStock,
+                  ),
+                  const SizedBox(height: 14),
+                  _buildField(
+                    controller:
+                    _imageUrlController,
+                    label: 'URL de imagen',
+                    icon: Icons.image_outlined,
+                    keyboardType: TextInputType.url,
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color:
+                        const Color(0xFFFFF1F1),
+                        borderRadius:
+                        BorderRadius.circular(14),
+                        border: Border.all(
+                          color:
+                          const Color(0xFFFFCCCC),
+                        ),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFC62828),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _guardando
+                ? null
+                : () {
+              Navigator.of(context).pop(false);
+            },
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(
+                color: _headingColor,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed:
+            _guardando ? null : _guardar,
+            style: FilledButton.styleFrom(
+              backgroundColor: _buttonColor,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor:
+              _buttonColor.withOpacity(0.45),
+            ),
+            child: _guardando
+                ? const SizedBox(
+              width: 21,
+              height: 21,
+              child:
+              CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+                : const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    TextCapitalization textCapitalization =
+        TextCapitalization.none,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      enabled: !_guardando,
+      validator: validator,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      maxLines: maxLines,
+      cursorColor: _buttonColor,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(
+          icon,
+          color: _iconColor,
+        ),
+        filled: true,
+        fillColor: _containerColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(
+            color: _buttonColor,
+            width: 1.7,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(
+            color: Colors.redAccent,
+            width: 1.7,
+          ),
+        ),
       ),
     );
   }
