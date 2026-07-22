@@ -1,126 +1,289 @@
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+
+import 'package:http/http.dart' as http;
 
 class ApiService {
-  String get _baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000'; // Chrome
-    } else {
-      return 'http://10.0.100.192:3000'; // Para teléfono
-    }
-  }
+  // Para celular físico conectado por USB:
+  // adb reverse tcp:3000 tcp:3000
+  static const String baseUrl = 'http://10.0.101.59:3000';
 
-  static String? _jwtToken;
+  static String? _token;
 
   static void setToken(String token) {
-    _jwtToken = token;
+    _token = token;
   }
 
-  // Helper para generar las cabeceras automáticas con el JWT
-  Map<String, String> _getHeaders() {
+  static void clearToken() {
+    _token = null;
+  }
+
+  static Map<String, String> get _headers {
     return {
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      if (_jwtToken != null) "Authorization": "Bearer $_jwtToken",
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (_token != null) 'Authorization': 'Bearer $_token',
     };
   }
 
-  // --- MÓDULO DE PRODUCTOS (CRUD + VENTA) ---
+  static dynamic _decodeResponse(
+      http.Response response,
+      ) {
+    dynamic data;
 
-  // 1. CONSULTA (Read)
-  Future<List<dynamic>> obtenerProductos() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/productos'),
-        headers: _getHeaders(),
-      );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+    if (response.body.isNotEmpty) {
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        data = response.body;
       }
-    } catch (e) {
-      print("Error al obtener productos: $e");
     }
-    return [];
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300) {
+      return data;
+    }
+
+    String message = 'Error al comunicarse con el servidor.';
+
+    if (data is Map<String, dynamic>) {
+      message =
+          data['detalle']?.toString() ??
+              data['error']?.toString() ??
+              data['mensaje']?.toString() ??
+              message;
+    }
+
+    throw Exception(message);
   }
 
-  // 2. ALTA (Create)
-  Future<bool> crearProducto(Map<String, dynamic> datosProducto) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/productos'),
-        headers: _getHeaders(),
-        body: jsonEncode(datosProducto),
-      );
-      return response.statusCode == 201;
-    } catch (e) {
-      print("Error al crear producto: $e");
-      return false;
+  static Future<dynamic> _request(
+      String method,
+      String path, {
+        Map<String, dynamic>? body,
+      }) async {
+    final Uri uri = Uri.parse('$baseUrl$path');
+
+    late http.Response response;
+
+    switch (method) {
+      case 'GET':
+        response = await http.get(
+          uri,
+          headers: _headers,
+        );
+        break;
+
+      case 'POST':
+        response = await http.post(
+          uri,
+          headers: _headers,
+          body: jsonEncode(body),
+        );
+        break;
+
+      case 'PUT':
+        response = await http.put(
+          uri,
+          headers: _headers,
+          body: jsonEncode(body),
+        );
+        break;
+
+      case 'PATCH':
+        response = await http.patch(
+          uri,
+          headers: _headers,
+          body: jsonEncode(body),
+        );
+        break;
+
+      case 'DELETE':
+        response = await http.delete(
+          uri,
+          headers: _headers,
+        );
+        break;
+
+      default:
+        throw Exception('Método HTTP no soportado.');
     }
+
+    return _decodeResponse(response);
   }
 
-  // 3. MODIFICACIÓN (Update)
-  Future<bool> actualizarProducto(
-    String id,
-    Map<String, dynamic> datosProducto,
-  ) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/productos/$id'),
-        headers: _getHeaders(),
-        body: jsonEncode(datosProducto),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      print("Error al actualizar producto: $e");
-      return false;
-    }
+  // =========================================================
+  // Dashboard
+  // =========================================================
+
+  static Future<Map<String, dynamic>> getSummary() async {
+    final dynamic data = await _request(
+      'GET',
+      '/resumen',
+    );
+
+    return Map<String, dynamic>.from(data);
   }
 
-  // ➔ REQUISITO R3: VENDER PRODUCTO (Disminuir número del inventario)
-  Future<bool> venderProducto(String id, int cantidad) async {
-    try {
-      final response = await http.patch(
-        Uri.parse('$_baseUrl/productos/$id/vender'),
-        headers: _getHeaders(),
-        body: jsonEncode({
-          "cantidad": cantidad,
-        }), // Mandamos la cantidad elegida al backend
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      print("Error al vender producto: $e");
-      return false;
-    }
+  // =========================================================
+  // Productos
+  // =========================================================
+
+  static Future<List<Map<String, dynamic>>>
+  getProducts() async {
+    final dynamic data = await _request(
+      'GET',
+      '/productos',
+    );
+
+    return List<Map<String, dynamic>>.from(
+      (data as List).map(
+            (dynamic item) =>
+        Map<String, dynamic>.from(item),
+      ),
+    );
   }
 
-  // 4. BAJA (Delete)
-  Future<bool> eliminarProducto(String id) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('$_baseUrl/productos/$id'),
-        headers: _getHeaders(),
-      );
-      return response.statusCode == 200;
-    } catch (e) {
-      print("Error al eliminar producto: $e");
-      return false;
-    }
+  static Future<Map<String, dynamic>> createProduct(
+      Map<String, dynamic> product,
+      ) async {
+    final dynamic data = await _request(
+      'POST',
+      '/productos',
+      body: product,
+    );
+
+    return Map<String, dynamic>.from(data);
   }
 
-  // Tu test original por si lo ocupas
-  Future<Map<String, dynamic>?> verificarTest() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/'),
-        headers: _getHeaders(),
-      );
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-    } catch (e) {
-      print("Error conectando al backend: $e");
-    }
-    return null;
+  static Future<Map<String, dynamic>> updateProduct(
+      String id,
+      Map<String, dynamic> product,
+      ) async {
+    final dynamic data = await _request(
+      'PUT',
+      '/productos/$id',
+      body: product,
+    );
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<void> deleteProduct(
+      String id,
+      ) async {
+    await _request(
+      'DELETE',
+      '/productos/$id',
+    );
+  }
+
+  static Future<Map<String, dynamic>> sellProduct(
+      String id,
+      int quantity,
+      ) async {
+    final dynamic data = await _request(
+      'PATCH',
+      '/productos/$id/vender',
+      body: {
+        'cantidad': quantity,
+      },
+    );
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  // =========================================================
+  // Proveedores
+  // =========================================================
+
+  static Future<List<Map<String, dynamic>>>
+  getProviders() async {
+    final dynamic data = await _request(
+      'GET',
+      '/proveedores',
+    );
+
+    return List<Map<String, dynamic>>.from(
+      (data as List).map(
+            (dynamic item) =>
+        Map<String, dynamic>.from(item),
+      ),
+    );
+  }
+
+  static Future<Map<String, dynamic>> createProvider(
+      Map<String, dynamic> provider,
+      ) async {
+    final dynamic data = await _request(
+      'POST',
+      '/proveedores',
+      body: provider,
+    );
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<Map<String, dynamic>> updateProvider(
+      String id,
+      Map<String, dynamic> provider,
+      ) async {
+    final dynamic data = await _request(
+      'PUT',
+      '/proveedores/$id',
+      body: provider,
+    );
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<void> deleteProvider(
+      String id,
+      ) async {
+    await _request(
+      'DELETE',
+      '/proveedores/$id',
+    );
+  }
+
+  // =========================================================
+  // Ventas
+  // =========================================================
+
+  static Future<Map<String, dynamic>> createSale(
+      Map<String, dynamic> sale,
+      ) async {
+    final dynamic data = await _request(
+      'POST',
+      '/ventas',
+      body: sale,
+    );
+
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<List<Map<String, dynamic>>>
+  getSales() async {
+    final dynamic data = await _request(
+      'GET',
+      '/ventas',
+    );
+
+    return List<Map<String, dynamic>>.from(
+      (data as List).map(
+            (dynamic item) =>
+        Map<String, dynamic>.from(item),
+      ),
+    );
+  }
+
+  static Future<Map<String, dynamic>> getSale(
+      String id,
+      ) async {
+    final dynamic data = await _request(
+      'GET',
+      '/ventas/$id',
+    );
+
+    return Map<String, dynamic>.from(data);
   }
 }
